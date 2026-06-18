@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { extname, resolve } from 'node:path';
 import { generateCard } from './cardGenerator.js';
 
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3001;
 const HOST = "0.0.0.0";
 const distPath = resolve('dist');
 
@@ -143,7 +143,8 @@ wss.on('connection', (socket) => {
   });
 });
 
-server.listen(PORT, HOST, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`App running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
   console.log(`WebSocket server running on ws://localhost:${PORT}`);
 });

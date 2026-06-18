@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
+const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+
+const WS_URL =
+  import.meta.env.VITE_WS_URL ||
+  `${protocol}://${window.location.host}`;
 
 const emptyStatus = {
   kind: 'idle',
