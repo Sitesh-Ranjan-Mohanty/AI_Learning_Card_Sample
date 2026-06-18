@@ -4,8 +4,8 @@ import { createServer } from 'node:http';
 import { extname, resolve } from 'node:path';
 import { generateCard } from './cardGenerator.js';
 
-const PORT = Number(process.env.PORT || 3001);
-const HOST = process.env.HOST || '127.0.0.1';
+const PORT = process.env.PORT || 10000;
+const HOST = "0.0.0.0";
 const distPath = resolve('dist');
 
 const contentTypes = {
