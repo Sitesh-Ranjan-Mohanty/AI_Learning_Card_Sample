@@ -161,10 +161,6 @@ function App() {
       <section className="workspace">
         <div className="intro">
           <h1>AI Learning Card Generator</h1>
-          <p className="summary">
-            Stream three study cards over WebSockets and test recovery when the
-            final card fails.
-          </p>
         </div>
 
         <form className="generator" onSubmit={handleGenerate}>
@@ -183,9 +179,6 @@ function App() {
           </div>
 
           <div className="controls">
-            <span className="connection" data-connected={isConnected}>
-              {isConnected ? 'WebSocket connected' : 'Connecting...'}
-            </span>
             <label className="mode-switch">
               <input
                 type="checkbox"
