@@ -1,42 +1,96 @@
-const delay = (milliseconds) =>
-  new Promise((resolve) => {
-    setTimeout(resolve, milliseconds);
-  });
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+const GEMINI_API_KEY =
+  process.env.GEMINI_API_KEY ||
+  process.env.GOOGLE_API_KEY ||
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
-const templates = [
-  {
-    title: (topic) => `${topic}: The Big Idea`,
-    concept: (topic) =>
-      `${topic} starts with a core principle that explains why the topic matters. Once learners understand that central idea, the smaller details become easier to connect and remember.`,
-    fact: (topic) =>
-      `A useful way to study ${topic} is to explain it aloud in one minute, then notice which parts feel unclear.`,
-  },
-  {
-    title: (topic) => `${topic}: How It Works`,
-    concept: (topic) =>
-      `Most parts of ${topic} follow a cause-and-effect pattern. Looking for what changes, what stays the same, and what triggers the next step makes the topic feel more practical.`,
-    fact: (topic) =>
-      `Drawing a quick flow chart can make ${topic} much easier to recall later.`,
-  },
-  {
-    title: (topic) => `${topic}: Why It Matters`,
-    concept: (topic) =>
-      `${topic} becomes memorable when it is tied to real examples. Connecting the idea to everyday decisions, experiments, or technology helps turn abstract facts into usable knowledge.`,
-    fact: (topic) =>
-      `Teachers often use analogies for ${topic} because familiar comparisons speed up understanding.`,
-  },
-];
+const getGeminiEndpoint = () =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
+const buildPrompt = (topic, cardNumber) => `
+Create learning card ${cardNumber} of 3 for the topic "${topic}".
+
+Return only valid JSON using this exact shape:
+{
+  "title": "short card title",
+  "keyConcept": "one or two clear sentences explaining the main concept",
+  "funFact": "one concise interesting fact or memory hook"
+}
+
+Make card ${cardNumber} distinct from the other cards a learner would receive.
+`;
+
+const extractJson = (text) => {
+  const trimmedText = text.trim();
+  const fencedMatch = trimmedText.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const jsonText = fencedMatch ? fencedMatch[1].trim() : trimmedText;
+  return JSON.parse(jsonText);
+};
+
+const validateGeneratedCard = (card) => {
+  if (
+    !card ||
+    typeof card.title !== 'string' ||
+    typeof card.keyConcept !== 'string' ||
+    typeof card.funFact !== 'string'
+  ) {
+    throw new Error('Gemini returned an unexpected card format.');
+  }
+};
 
 export async function generateCard(topic, cardNumber) {
-  await delay(850);
+  if (!GEMINI_API_KEY) {
+    throw new Error(
+      'Missing Gemini API key. Set GEMINI_API_KEY before generating cards.',
+    );
+  }
 
   const normalizedTopic = topic.trim();
-  const template = templates[cardNumber - 1];
+  const response = await fetch(getGeminiEndpoint(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': GEMINI_API_KEY,
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            {
+              text: buildPrompt(normalizedTopic, cardNumber),
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        responseMimeType: 'application/json',
+      },
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const message = data?.error?.message || 'Gemini card generation failed.';
+    throw new Error(message);
+  }
+
+  const text = data.candidates?.[0]?.content?.parts
+    ?.map((part) => part.text || '')
+    .join('')
+    .trim();
+
+  if (!text) {
+    throw new Error('Gemini returned an empty response.');
+  }
+
+  const card = extractJson(text);
+  validateGeneratedCard(card);
 
   return {
     cardNumber,
-    title: template.title(normalizedTopic),
-    keyConcept: template.concept(normalizedTopic),
-    funFact: template.fact(normalizedTopic),
+    title: card.title.trim(),
+    keyConcept: card.keyConcept.trim(),
+    funFact: card.funFact.trim(),
   };
 }

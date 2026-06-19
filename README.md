@@ -6,9 +6,9 @@ A small full-stack trial app for Ask Ainstein. Users enter a learning topic, the
 
 - React + Vite frontend
 - Node.js WebSocket backend using `ws`
-- Mock AI card generator in `server/cardGenerator.js`
+- Gemini card generator in `server/cardGenerator.js`
 
-The generator is intentionally local and deterministic so the project runs without an API key during review. The same `generateCard(topic, cardNumber)` boundary can be replaced with an OpenAI or Gemini call.
+The backend calls the Gemini API when a user clicks Generate. Set `GEMINI_API_KEY` in `.env` before starting the server.
 
 ## Features
 
@@ -43,6 +43,8 @@ The frontend connects to `ws://localhost:3001` by default. To override it:
 VITE_WS_URL=ws://localhost:3001 npm run dev:client
 ```
 
+To use a different Gemini model, change `GEMINI_MODEL` in `.env`. The default model is `gemini-3.5-flash`.
+
 ## WebSocket Messages
 
 Client to server:
@@ -62,4 +64,4 @@ Server to client:
 
 - WebSocket state is kept on the connection so retry can use the same socket and remember the failed card.
 - The failure mode returns after the card 3 error instead of clearing the stream, preserving cards 1 and 2 for recovery.
-- Card generation is isolated behind a small function to keep the backend ready for a real AI provider without changing the WebSocket flow.
+- Card generation is isolated behind a small function so provider changes do not affect the WebSocket flow.

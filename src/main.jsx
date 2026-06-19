@@ -3,10 +3,13 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 
 const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+const defaultWsHost = import.meta.env.DEV
+  ? `${window.location.hostname}:3001`
+  : window.location.host;
 
 const WS_URL =
   import.meta.env.VITE_WS_URL ||
-  `${protocol}://${window.location.host}`;
+  `${protocol}://${defaultWsHost}`;
 
 const emptyStatus = {
   kind: 'idle',
@@ -151,7 +154,7 @@ function App() {
     setIsGenerating(true);
     setStatus({
       kind: 'loading',
-      message: 'Retrying card 3 on the same WebSocket connection...',
+      message: `Retrying card ${failedCard?.cardNumber || ''} on the same WebSocket connection...`,
     });
     sendMessage({ type: 'retry-card' });
   };
@@ -178,19 +181,7 @@ function App() {
             </button>
           </div>
 
-          <div className="controls">
-            <label className="mode-switch">
-              <input
-                type="checkbox"
-                checked={mode === 'failure'}
-                onChange={(event) => (
-                  setMode(event.target.checked ? 'failure' : 'success')
-                )}
-                disabled={isGenerating}
-              />
-              <span>Failure mode</span>
-            </label>
-          </div>
+          
         </form>
 
         <div className={`status ${status.kind}`} role="status">
@@ -219,10 +210,10 @@ function App() {
                   </>
                 ) : isFailed ? (
                   <div className="card-error">
-                    <h2>Card 3 could not be generated</h2>
+                    <h2>Card {cardNumber} could not be generated</h2>
                     <p>{failedCard.message}</p>
                     <button type="button" onClick={handleRetry}>
-                      Retry Card 3
+                      Retry Card {cardNumber}
                     </button>
                   </div>
                 ) : (

@@ -1,3 +1,4 @@
+import './loadEnv.js';
 import { WebSocketServer } from 'ws';
 import { createReadStream, existsSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -18,6 +19,13 @@ const contentTypes = {
 
 const server = createServer((request, response) => {
   const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
+
+  if (pathname === '/favicon.ico') {
+    response.writeHead(204);
+    response.end();
+    return;
+  }
+
   const requestPath = pathname === '/' ? '/index.html' : pathname;
   const filePath = resolve(distPath, `.${decodeURIComponent(requestPath)}`);
 
@@ -77,8 +85,18 @@ async function streamCards(socket, { topic, mode }) {
       return;
     }
 
-    const card = await generateCard(socket.currentTopic, cardNumber);
-    sendJson(socket, { type: 'card', card });
+    try {
+      const card = await generateCard(socket.currentTopic, cardNumber);
+      sendJson(socket, { type: 'card', card });
+    } catch (error) {
+      socket.failedCard = cardNumber;
+      sendJson(socket, {
+        type: 'card-error',
+        cardNumber,
+        message: error.message || `Card ${cardNumber} could not be generated.`,
+      });
+      return;
+    }
   }
 
   sendJson(socket, {
@@ -88,7 +106,7 @@ async function streamCards(socket, { topic, mode }) {
 }
 
 async function retryFailedCard(socket) {
-  if (!socket.currentTopic || socket.failedCard !== 3) {
+  if (!socket.currentTopic || !socket.failedCard) {
     sendJson(socket, {
       type: 'error',
       message: 'There is no failed card to retry.',
@@ -96,13 +114,23 @@ async function retryFailedCard(socket) {
     return;
   }
 
-  const card = await generateCard(socket.currentTopic, 3);
-  socket.failedCard = null;
+  let card;
+  try {
+    card = await generateCard(socket.currentTopic, socket.failedCard);
+    socket.failedCard = null;
+  } catch (error) {
+    sendJson(socket, {
+      type: 'card-error',
+      cardNumber: socket.failedCard,
+      message: error.message || `Card ${socket.failedCard} could not be generated.`,
+    });
+    return;
+  }
 
   sendJson(socket, { type: 'card', card });
   sendJson(socket, {
     type: 'complete',
-    message: 'Retry succeeded. All 3 learning cards are ready.',
+    message: 'Retry succeeded. The learning cards are ready.',
   });
 }
 
